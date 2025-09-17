@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="120" viewBox="0 0 600 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#EA4B71;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#5865F2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066CC;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="120" fill="url(#bgGradient)" rx="8"/>
+
+  <!-- n8n logo placeholder (left side) -->
+  <circle cx="80" cy="60" r="25" fill="white" opacity="0.9"/>
+  <text x="80" y="68" text-anchor="middle" fill="#EA4B71" font-family="Arial, sans-serif" font-size="20" font-weight="bold">n8n</text>
+
+  <!-- Plus symbol -->
+  <text x="150" y="68" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="bold">+</text>
+
+  <!-- Agendor logo (right side) -->
+  <circle cx="220" cy="60" r="25" fill="white" opacity="0.9"/>
+  <!-- Stylized "A" for Agendor -->
+  <path d="M210 75 L220 45 L230 75 M214 66 L226 66" stroke="#0066CC" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Title text -->
+  <text x="320" y="45" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="bold">n8n-nodes-agendor</text>
+  <text x="320" y="70" fill="white" font-family="Arial, sans-serif" font-size="16" opacity="0.9">Integração completa com Agendor CRM</text>
+  <text x="320" y="90" fill="white" font-family="Arial, sans-serif" font-size="12" opacity="0.8">Automatize seu CRM com workflows poderosos</text>
+</svg>
