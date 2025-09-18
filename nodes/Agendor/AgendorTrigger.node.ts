@@ -220,9 +220,17 @@ export class AgendorTrigger implements INodeType {
 				const debugMode = this.getNodeParameter('debugMode', false) as boolean;
 				const options = this.getNodeParameter('options', {}) as IDataObject;
 
+				// FORCE LOGGING - sempre mostra logs básicos
+				console.log('🚀 WEBHOOK CREATE STARTED');
+				console.log('📍 Webhook URL:', webhookUrl);
+				console.log('🎯 Event:', event);
+				console.log('🔧 Debug Mode:', debugMode);
+
 				// Validate webhook URL
 				if (!webhookUrl || !webhookUrl.startsWith('http')) {
-					throw new Error(`Invalid webhook URL: ${webhookUrl}. Make sure n8n is accessible externally.`);
+					const error = `❌ Invalid webhook URL: ${webhookUrl}. Make sure n8n is accessible externally.`;
+					console.error(error);
+					throw new Error(error);
 				}
 
 				// Validate event
@@ -234,17 +242,20 @@ export class AgendorTrigger implements INodeType {
 				];
 				
 				if (!validEvents.includes(event)) {
-					throw new Error(`Invalid event: ${event}. Valid events: ${validEvents.join(', ')}`);
+					const error = `❌ Invalid event: ${event}. Valid events: ${validEvents.join(', ')}`;
+					console.error(error);
+					throw new Error(error);
 				}
 
 				// Test API authentication first
+				console.log('🔐 Testing API authentication...');
 				try {
 					await agendorApiRequest.call(this, 'GET', '/users/me');
-					if (debugMode) {
-						console.log('✅ API authentication successful');
-					}
+					console.log('✅ API authentication successful');
 				} catch (error) {
-					throw new Error(`API authentication failed: ${(error as Error).message}. Please check your Agendor API token.`);
+					const authError = `❌ API authentication failed: ${(error as Error).message}. Please check your Agendor API token.`;
+					console.error(authError);
+					throw new Error(authError);
 				}
 
 				const body = {
@@ -254,71 +265,66 @@ export class AgendorTrigger implements INodeType {
 					...(options.description && { description: options.description }),
 				};
 
+				console.log('� Sending webhook creation request to Agendor...');
+				console.log('📋 Request body:', JSON.stringify(body, null, 2));
+
 				try {
-					if (debugMode) {
-						console.log('🔄 Creating webhook with data:', {
-							target_url: webhookUrl,
-							event: event,
-							active: true,
-							description: options.description || 'N/A'
-						});
-					}
-					
 					const response = await agendorApiRequest.call(this, 'POST', '/integrations/subscriptions', body);
 					
-					if (debugMode) {
-						console.log('✅ Webhook created successfully:', response);
-					}
+					console.log('✅ Webhook created successfully!');
+					console.log('📥 Response:', JSON.stringify(response, null, 2));
 					
 					return true;
 				} catch (error) {
+					console.log('❌ WEBHOOK CREATION FAILED - DETAILED ERROR:');
+					
 					const errorObj = error as any;
 					let detailedError = `Failed to create webhook: ${errorObj.message || 'Unknown error'}`;
+					
+					console.log('🔍 Error object keys:', Object.keys(errorObj));
+					console.log('🔍 Error message:', errorObj.message);
+					console.log('🔍 Error response:', errorObj.response);
+					console.log('🔍 Error status:', errorObj.statusCode || errorObj.response?.status);
+					console.log('🔍 Error data:', errorObj.response?.data || errorObj.response?.body);
 					
 					// Add more specific error details
 					if (errorObj.response) {
 						const status = errorObj.response.status || errorObj.statusCode;
 						const responseData = errorObj.response.data || errorObj.response.body;
 						
-						detailedError += `\n\nHTTP Status: ${status}`;
+						detailedError += `\n\n🔍 HTTP Status: ${status}`;
 						
 						if (responseData) {
 							if (typeof responseData === 'string') {
-								detailedError += `\nResponse: ${responseData}`;
+								detailedError += `\n🔍 Response: ${responseData}`;
 							} else if (responseData.message) {
-								detailedError += `\nAgendor Message: ${responseData.message}`;
+								detailedError += `\n🔍 Agendor Message: ${responseData.message}`;
 							} else if (responseData.errors) {
-								detailedError += `\nErrors: ${JSON.stringify(responseData.errors, null, 2)}`;
+								detailedError += `\n🔍 Errors: ${JSON.stringify(responseData.errors, null, 2)}`;
 							} else {
-								detailedError += `\nResponse Data: ${JSON.stringify(responseData, null, 2)}`;
+								detailedError += `\n🔍 Response Data: ${JSON.stringify(responseData, null, 2)}`;
 							}
 						}
 						
 						// Common error scenarios
 						if (status === 400) {
-							detailedError += `\n\n🔍 Common causes for 400 Bad Request:`;
-							detailedError += `\n- Invalid webhook URL (must be accessible from internet)`;
-							detailedError += `\n- URL already registered for this event`;
-							detailedError += `\n- Invalid event name`;
-							detailedError += `\n- Missing required parameters`;
-							detailedError += `\n\n💡 Try:`;
+							detailedError += `\n\n� Common causes for 400 Bad Request:`;
+							detailedError += `\n• Invalid webhook URL (must be accessible from internet)`;
+							detailedError += `\n• URL already registered for this event`;
+							detailedError += `\n• Invalid event name`;
+							detailedError += `\n• Missing required parameters`;
+							detailedError += `\n\n� Try:`;
 							detailedError += `\n1. Check if n8n is accessible from external networks`;
 							detailedError += `\n2. Verify webhook URL: ${webhookUrl}`;
 							detailedError += `\n3. Check if webhook already exists in Agendor`;
 						} else if (status === 401) {
-							detailedError += `\n\n🔍 Authentication error: Check your Agendor API token`;
+							detailedError += `\n\n� Authentication error: Check your Agendor API token`;
 						} else if (status === 403) {
-							detailedError += `\n\n🔍 Permission error: Your API token may not have webhook permissions`;
+							detailedError += `\n\n� Permission error: Your API token may not have webhook permissions`;
 						}
 					}
 					
-					console.error('❌ Webhook creation failed:', detailedError);
-					
-					if (debugMode) {
-						console.error('🔍 Full error object:', errorObj);
-						console.error('🔍 Request data:', body);
-					}
-					
+					console.error('📋 Final error message:', detailedError);
 					throw new Error(detailedError);
 				}
 			},

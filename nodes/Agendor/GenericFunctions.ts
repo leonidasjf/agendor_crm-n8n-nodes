@@ -20,6 +20,12 @@ export async function agendorApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('agendorApi');
 
+	// For webhook endpoints, use the base URL without version
+	let baseUrl = credentials.apiUrl as string;
+	if (resource.includes('/integrations/subscriptions')) {
+		baseUrl = 'https://api.agendor.com.br';
+	}
+
 	const options: IRequestOptions = {
 		headers: {
 			'Authorization': `Token ${credentials.apiToken}`,
@@ -29,7 +35,7 @@ export async function agendorApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.apiUrl}${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 	};
 
