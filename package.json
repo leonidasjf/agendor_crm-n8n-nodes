@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-agendor-integration",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Integração completa com Agendor CRM - 100% da API v3 em português",
   "keywords": [
     "n8n-community-node-package",
