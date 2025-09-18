@@ -116,6 +116,36 @@ export class AgendorTrigger implements INodeType {
 				required: true,
 				description: 'The event that will trigger the webhook',
 			},
+			{
+				displayName: 'Debug Mode',
+				name: 'debugMode',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable debug logging for webhook operations',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Webhook Description',
+						name: 'description',
+						type: 'string',
+						default: '',
+						description: 'Optional description for the webhook',
+					},
+					{
+						displayName: 'Timeout (seconds)',
+						name: 'timeout',
+						type: 'number',
+						default: 30,
+						description: 'Timeout for webhook requests in seconds',
+					},
+				],
+			},
 		],
 	};
 
@@ -128,7 +158,16 @@ export class AgendorTrigger implements INodeType {
 
 				try {
 					const response = await agendorApiRequest.call(this, 'GET', '/integrations/subscriptions');
-					const webhooks = response.data || [];
+					
+					// Handle different response formats
+					let webhooks = [];
+					if (Array.isArray(response)) {
+						webhooks = response;
+					} else if (response && response.data && Array.isArray(response.data)) {
+						webhooks = response.data;
+					} else if (response && Array.isArray(response.results)) {
+						webhooks = response.results;
+					}
 
 					for (const webhook of webhooks) {
 						if (webhook.target_url === webhookUrl && webhook.event === event) {
@@ -136,6 +175,7 @@ export class AgendorTrigger implements INodeType {
 						}
 					}
 				} catch (error) {
+					console.error('Error checking webhook existence:', error);
 					return false;
 				}
 
@@ -145,17 +185,37 @@ export class AgendorTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event') as string;
+				const debugMode = this.getNodeParameter('debugMode', false) as boolean;
+				const options = this.getNodeParameter('options', {}) as IDataObject;
 
 				const body = {
 					target_url: webhookUrl,
 					event: event,
+					active: true,
+					...(options.description && { description: options.description }),
 				};
 
 				try {
-					await agendorApiRequest.call(this, 'POST', '/integrations/subscriptions', body);
+					if (debugMode) {
+						console.log('Creating webhook with data:', body);
+					}
+					
+					const response = await agendorApiRequest.call(this, 'POST', '/integrations/subscriptions', body);
+					
+					if (debugMode) {
+						console.log('Webhook created successfully:', response);
+					}
+					
 					return true;
 				} catch (error) {
-					return false;
+					const errorMessage = `Failed to create webhook: ${(error as Error).message || 'Unknown error'}`;
+					console.error('Error creating webhook:', errorMessage);
+					
+					if (debugMode) {
+						console.error('Full error details:', error);
+					}
+					
+					throw new Error(errorMessage);
 				}
 			},
 
@@ -165,15 +225,27 @@ export class AgendorTrigger implements INodeType {
 
 				try {
 					const response = await agendorApiRequest.call(this, 'GET', '/integrations/subscriptions');
-					const webhooks = response.data || [];
+					
+					let webhooks = [];
+					if (Array.isArray(response)) {
+						webhooks = response;
+					} else if (response && response.data && Array.isArray(response.data)) {
+						webhooks = response.data;
+					} else if (response && Array.isArray(response.results)) {
+						webhooks = response.results;
+					}
 
 					for (const webhook of webhooks) {
 						if (webhook.target_url === webhookUrl && webhook.event === event) {
+							console.log('Deleting webhook with ID:', webhook.id);
 							await agendorApiRequest.call(this, 'DELETE', `/integrations/subscriptions/${webhook.id}`);
+							console.log('Webhook deleted successfully');
 							return true;
 						}
 					}
 				} catch (error) {
+					console.error('Error deleting webhook:', error);
+					// Don't throw error here, just return false
 					return false;
 				}
 
@@ -185,15 +257,34 @@ export class AgendorTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData() as IDataObject;
 		const headerData = this.getHeaderData() as IDataObject;
+		const queryData = this.getQueryData() as IDataObject;
+
+		// Log the received webhook for debugging
+		console.log('Received webhook data:', {
+			body: bodyData,
+			headers: headerData,
+			query: queryData
+		});
+
+		// Process the webhook data
+		const processedData = {
+			event: bodyData.event || 'unknown',
+			data: bodyData.data || bodyData,
+			timestamp: new Date().toISOString(),
+			headers: {
+				'content-type': headerData['content-type'],
+				'user-agent': headerData['user-agent'],
+				'x-agendor-webhook-id': headerData['x-agendor-webhook-id'],
+				'x-agendor-signature': headerData['x-agendor-signature'],
+			},
+			query: queryData,
+		};
 
 		return {
 			workflowData: [
 				[
 					{
-						json: {
-							...bodyData,
-							headers: headerData,
-						},
+						json: processedData,
 					},
 				],
 			],

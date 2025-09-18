@@ -41,15 +41,27 @@ export async function agendorApiRequest(
 
 	try {
 		const response = await this.helpers.request!(options);
+		
+		console.log(`API Request: ${method} ${options.uri}`, {
+			body: method !== 'GET' ? body : undefined,
+			response: response
+		});
 
 		// Handle Agendor API response format
 		if (response && typeof response === 'object') {
-			// If response has data property, return it; otherwise return the whole response
+			// For webhook subscriptions, the API might return different formats
+			if (resource.includes('/integrations/subscriptions')) {
+				// Return the full response for webhook operations
+				return response;
+			}
+			
+			// For other endpoints, check for data property
 			return response.data !== undefined ? response.data : response;
 		}
 
 		return response;
 	} catch (error) {
+		console.error(`API Request failed: ${method} ${options.uri}`, error);
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

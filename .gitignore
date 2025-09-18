@@ -96,3 +96,8 @@ dist/
 # Temporary folders
 tmp/
 temp/
+
+# Agendor API Collection (contains sensitive data/examples)
+Agendor API V3.postman_collection.json
+*agendor*collection*
+*.postman_collection.json
